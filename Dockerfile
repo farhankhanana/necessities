@@ -17,32 +17,8 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-# Copy the code into the container
-COPY cmd/app .
+# Copy the entire project
+COPY . .
 
-# Build the application
-RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o main .
-RUN upx --best --lzma main
-
-# Move to /dist directory as the place for resulting binary folder
-WORKDIR /dist
-
-# Copy binary from build to main folder
-RUN cp /build/default.env ./config.env
-RUN cp /build/main .
-
-# Build a small image
-FROM gcr.io/distroless/static-debian11
-
-# Prepare user and tz
-USER nonroot:nonroot
-ENV TZ=Asia/Jakarta
-
-# Copy application
-COPY --from=builder /dist/main /dist/config.env /
-
-# Export necessary ports
-EXPOSE 3000
-
-# Command to run
-ENTRYPOINT [ "/main" ]
+# If you need to compile the package, you can do so with `go build` without the `-o` flag
+RUN go build -v ./...
