@@ -3,7 +3,6 @@ FROM golang:1.19.2-alpine3.16 AS builder
 RUN apk add --no-cache git upx
 
 # Prepare Git
-
 RUN --mount=type=secret,id=GITHUB_USERNAME \
     --mount=type=secret,id=GITHUB_TOKEN \
     export GITHUB_USERNAME=$(cat /run/secrets/GITHUB_USERNAME) && \
@@ -19,7 +18,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy the code into the container
-COPY . .
+COPY cmd/app .
 
 # Build the application
 RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o main .
@@ -29,20 +28,20 @@ RUN upx --best --lzma main
 WORKDIR /dist
 
 # Copy binary from build to main folder
+RUN cp /build/default.env ./config.env
 RUN cp /build/main .
-# RUN cp /build/assets .
 
 # Build a small image
 FROM gcr.io/distroless/static-debian11
 
-#perpare user and tz
+# Prepare user and tz
 USER nonroot:nonroot
 ENV TZ=Asia/Jakarta
 
-# copy application
+# Copy application
 COPY --from=builder /dist/main /dist/config.env /
 
-# Export necessary port
+# Export necessary ports
 EXPOSE 3000
 
 # Command to run
